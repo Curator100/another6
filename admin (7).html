@@ -1,0 +1,941 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tuition Media — Admin</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;500;600;700&family=Baloo+Da+2:wght@600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root{
+    --bg:#F6F4EE; --surface:#FFFFFF; --ink:#28322F; --ink-soft:#5C6B65;
+    --teal:#2F6F62; --teal-deep:#204E44; --gold:#D9A441; --gold-soft:#F0DFB4;
+    --line:#E4E0D2; --radius:14px; --shadow:0 4px 20px rgba(40,50,47,0.06);
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:'Hind Siliguri',sans-serif;}
+  h1,h2,.display{font-family:'Baloo Da 2',sans-serif;color:var(--teal-deep);margin:0;}
+  button,input,select{font-family:inherit;}
+  :focus-visible{outline:3px solid var(--gold);outline-offset:2px;}
+
+  /* login */
+  #loginScreen{
+    min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;
+  }
+  .login-card{
+    background:var(--surface);padding:34px 28px;border-radius:18px;box-shadow:var(--shadow);
+    width:100%;max-width:360px;
+  }
+  .login-card h1{font-size:24px;margin-bottom:4px;}
+  .login-card p{color:var(--ink-soft);margin:0 0 22px;font-size:14px;}
+  .login-card input{
+    width:100%;padding:12px 14px;border-radius:10px;border:1.5px solid var(--line);
+    background:var(--bg);font-size:15.5px;margin-bottom:12px;
+  }
+  .login-card button{
+    width:100%;padding:12px;border:none;border-radius:10px;background:var(--teal);
+    color:#fff;font-weight:600;font-size:15.5px;margin-top:6px;
+  }
+  .login-err{color:#B5473B;font-size:13.5px;min-height:16px;margin-top:4px;}
+
+  /* dashboard */
+  #dashboard{display:none;padding:26px 20px 60px;max-width:1400px;margin:0 auto;}
+  .dash-head{
+    display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;
+    margin-bottom:22px;
+  }
+  .dash-head h1{font-size:26px;}
+  .dash-head .sub{color:var(--ink-soft);font-size:13.5px;margin-top:2px;}
+  .logout-btn{
+    background:none;border:1.5px solid var(--line);padding:9px 18px;border-radius:999px;
+    color:var(--ink-soft);font-size:14px;font-weight:600;
+  }
+  .stats{display:flex;gap:14px;flex-wrap:wrap;margin-bottom:22px;}
+  .stat{
+    background:var(--surface);border:1px solid var(--line);border-radius:14px;
+    padding:16px 20px;box-shadow:var(--shadow);min-width:140px;
+  }
+  .stat .num{font-family:'Baloo Da 2';font-size:26px;color:var(--teal-deep);}
+  .stat .label{font-size:13px;color:var(--ink-soft);}
+  .toolbar{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px;}
+  .toolbar input{
+    flex:1;min-width:180px;padding:10px 14px;border-radius:10px;border:1.5px solid var(--line);
+    background:var(--surface);font-size:14.5px;
+  }
+  .toolbar select{
+    padding:10px 14px;border-radius:10px;border:1.5px solid var(--line);
+    background:var(--surface);font-size:14px;color:var(--ink);
+  }
+  .toolbar button{
+    padding:10px 18px;border-radius:10px;border:1.5px solid var(--line);
+    background:var(--surface);font-size:14px;font-weight:600;color:var(--ink);
+  }
+  .table-wrap{
+    background:var(--surface);border-radius:14px;box-shadow:var(--shadow);
+    overflow-x:auto;border:1px solid var(--line);
+  }
+  table{width:100%;border-collapse:collapse;font-size:13.5px;min-width:1500px;}
+  th,td{padding:11px 13px;text-align:left;border-bottom:1px solid var(--line);white-space:nowrap;}
+  th{
+    background:var(--bg);color:var(--ink-soft);font-weight:600;font-size:12px;
+    text-transform:uppercase;letter-spacing:.04em;position:sticky;top:0;
+  }
+  tr:hover td{background:var(--gold-soft);}
+  .pill{
+    display:inline-block;padding:2px 10px;border-radius:999px;font-size:12px;font-weight:600;
+    background:var(--bg);color:var(--teal-deep);border:1px solid var(--line);
+  }
+  .pill.yes{background:#E4F0E8;color:var(--teal-deep);border-color:#BFDFC9;}
+  .pill.no{background:#F5E7E4;color:#B5473B;border-color:#EAC9C2;}
+  .pill.done{background:var(--teal);color:#fff;border-color:var(--teal);}
+  .pill.pending{background:var(--bg);color:var(--ink-soft);}
+  .detail-btn{
+    padding:6px 14px;border-radius:8px;border:1.5px solid var(--line);background:var(--surface);
+    font-size:12.5px;font-weight:600;color:var(--teal-deep);
+  }
+  .empty-state{padding:40px 20px;text-align:center;color:var(--ink-soft);}
+  .loading-state{padding:40px 20px;text-align:center;color:var(--ink-soft);}
+
+  /* detail drawer */
+  .drawer-overlay{
+    position:fixed;inset:0;background:rgba(32,40,37,0.5);display:none;
+    align-items:center;justify-content:center;z-index:200;padding:16px;
+  }
+  .drawer-overlay.open{display:flex;}
+  .drawer{
+    background:var(--surface);border-radius:16px;max-width:640px;width:100%;
+    max-height:88vh;overflow-y:auto;padding:24px 24px 30px;box-shadow:var(--shadow);
+  }
+  .drawer-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px;}
+  .drawer-top h2{font-size:20px;}
+  .drawer-close{background:none;border:none;font-size:22px;color:var(--ink-soft);line-height:1;padding:4px;}
+  .detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+  @media(max-width:520px){.detail-grid{grid-template-columns:1fr;}}
+  .detail-item{
+    background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px 12px;
+  }
+  .detail-item .dl{font-size:11.5px;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.04em;margin-bottom:3px;}
+  .detail-item .dv{font-size:14.5px;font-weight:600;color:var(--ink);}
+  .detail-section-title{
+    grid-column:1/-1;font-size:12.5px;font-weight:700;color:var(--teal);
+    text-transform:uppercase;letter-spacing:.05em;margin-top:10px;margin-bottom:-2px;
+  }
+
+  /* tabs */
+  .tabs{display:flex;gap:8px;margin-bottom:20px;}
+  .tab-btn{
+    padding:9px 20px;border-radius:999px;border:1.5px solid var(--line);background:var(--surface);
+    font-size:14px;font-weight:600;color:var(--ink-soft);
+  }
+  .tab-btn.active{background:var(--teal);border-color:var(--teal);color:#fff;}
+
+  /* tuitions */
+  .post-btn{
+    padding:10px 20px;border-radius:10px;border:none;background:var(--gold);
+    color:var(--teal-deep);font-size:14px;font-weight:700;
+  }
+  .pill.open{background:#E4F0E8;color:var(--teal-deep);border-color:#BFDFC9;}
+  .pill.filled{background:var(--bg);color:var(--ink-soft);}
+  .pill.cancelled{background:#F5E7E4;color:#B5473B;border-color:#EAC9C2;}
+  .row-actions{display:flex;gap:6px;}
+  .icon-btn{
+    padding:6px 12px;border-radius:8px;border:1.5px solid var(--line);background:var(--surface);
+    font-size:12.5px;font-weight:600;color:var(--ink);
+  }
+  .icon-btn.danger{color:#B5473B;border-color:#EAC9C2;}
+
+  /* tuition form modal */
+  .form-overlay{
+    position:fixed;inset:0;background:rgba(32,40,37,0.5);display:none;
+    align-items:center;justify-content:center;z-index:210;padding:16px;
+  }
+  .form-overlay.open{display:flex;}
+  .form-modal{
+    background:var(--surface);border-radius:16px;max-width:640px;width:100%;
+    max-height:90vh;overflow-y:auto;padding:24px 24px 28px;box-shadow:var(--shadow);
+  }
+  .form-modal h2{font-size:20px;margin-bottom:4px;}
+  .form-modal .sub{color:var(--ink-soft);font-size:13px;margin-bottom:18px;}
+  .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+  @media(max-width:520px){.form-grid{grid-template-columns:1fr;}}
+  .form-field{display:flex;flex-direction:column;gap:5px;}
+  .form-field.full{grid-column:1/-1;}
+  .form-field label{font-size:12.5px;font-weight:600;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.03em;}
+  .form-field input,.form-field select,.form-field textarea{
+    padding:10px 12px;border-radius:9px;border:1.5px solid var(--line);background:var(--bg);
+    font-size:14.5px;color:var(--ink);font-family:inherit;
+  }
+  .form-field textarea{resize:vertical;min-height:56px;}
+  .form-field .hint{font-size:11.5px;color:var(--ink-soft);}
+  .form-actions{display:flex;gap:10px;margin-top:20px;}
+  .form-actions button{
+    flex:1;padding:12px;border-radius:10px;font-size:15px;font-weight:600;border:1.5px solid var(--line);
+  }
+  .form-save{background:var(--teal);color:#fff;border-color:var(--teal);}
+  .form-cancel{background:var(--surface);color:var(--ink-soft);}
+  .form-err{color:#B5473B;font-size:13.5px;margin-top:10px;min-height:16px;}
+  .section-note{
+    grid-column:1/-1;font-size:12px;font-weight:700;color:var(--gold);
+    text-transform:uppercase;letter-spacing:.05em;margin-top:6px;margin-bottom:-4px;
+  }
+</style>
+</head>
+<body>
+
+<div id="loginScreen">
+  <div class="login-card">
+    <h1>Tuition Media</h1>
+    <p>Admin Panel</p>
+    <input type="text" id="adminUser" placeholder="Username" autocomplete="username">
+    <input type="password" id="adminPass" placeholder="Password" autocomplete="current-password">
+    <button id="loginBtn">Log In</button>
+    <div class="login-err" id="loginErr"></div>
+  </div>
+</div>
+
+<div id="dashboard">
+  <div class="dash-head">
+    <div>
+      <h1 id="dashTitle">Applicants</h1>
+      <div class="sub" id="lastUpdated"></div>
+    </div>
+    <button class="logout-btn" id="logoutBtn">Log Out</button>
+  </div>
+
+  <div class="tabs">
+    <button class="tab-btn active" id="tabApplicants">Applicants</button>
+    <button class="tab-btn" id="tabTuitions">Tuitions</button>
+  </div>
+
+  <div id="applicantsPanel">
+    <div class="stats">
+      <div class="stat"><div class="num" id="statTotal">0</div><div class="label">Total Applicants</div></div>
+      <div class="stat"><div class="num" id="statToday">0</div><div class="label">Today</div></div>
+      <div class="stat"><div class="num" id="statUnis">0</div><div class="label">Universities</div></div>
+      <div class="stat"><div class="num" id="statSurveyDone">0</div><div class="label">Survey Completed</div></div>
+    </div>
+
+    <div class="toolbar">
+      <input type="text" id="searchBox" placeholder="Search by name, number, area, department...">
+      <select id="surveyFilter">
+        <option value="">All applicants</option>
+        <option value="done">Survey completed</option>
+        <option value="pending">Survey pending</option>
+      </select>
+      <button id="refreshBtn">Refresh</button>
+      <button id="exportBtn">Export CSV</button>
+      <button id="syncRatingBtn">Save Ratings to DB</button>
+    </div>
+
+    <div class="table-wrap">
+      <table id="dataTable" hidden>
+        <thead>
+          <tr>
+            <th>Name</th><th>WhatsApp</th><th id="ratingHeader" style="cursor:pointer;">Rating ⇅</th><th>University</th><th>Year</th>
+            <th>Zones</th><th>Gender</th><th>Religion</th><th>Current Tuitions</th>
+            <th>Desired Earning</th><th>Applied Tuition</th><th>Survey</th><th>Date</th><th>Details</th>
+          </tr>
+        </thead>
+        <tbody id="tableBody"></tbody>
+      </table>
+      <div class="loading-state" id="loadingState">Loading...</div>
+      <div class="empty-state" id="emptyState" style="display:none;">No applications yet.</div>
+    </div>
+  </div>
+
+  <div id="tuitionsPanel" style="display:none;">
+    <div class="stats">
+      <div class="stat"><div class="num" id="tStatTotal">0</div><div class="label">Total Tuitions</div></div>
+      <div class="stat"><div class="num" id="tStatOpen">0</div><div class="label">Open</div></div>
+      <div class="stat"><div class="num" id="tStatFilled">0</div><div class="label">Filled</div></div>
+    </div>
+
+    <div class="toolbar">
+      <input type="text" id="tSearchBox" placeholder="Search by code, location, subjects...">
+      <select id="tStatusFilter">
+        <option value="">All statuses</option>
+        <option value="open">Open</option>
+        <option value="filled">Filled</option>
+        <option value="cancelled">Cancelled</option>
+      </select>
+      <button id="tRefreshBtn">Refresh</button>
+      <button class="post-btn" id="tPostBtn">+ Post New Tuition</button>
+    </div>
+
+    <div class="table-wrap">
+      <table id="tuitionsTable" hidden>
+        <thead>
+          <tr>
+            <th>Code</th><th>Location</th><th>Zone</th><th>Gender</th><th>Religion</th>
+            <th>University</th><th>Year</th><th>Local</th><th>Salary</th><th>Subjects</th>
+            <th>Guardian #</th><th>Days</th><th>Time</th><th>Medium</th><th>Status</th><th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="tuitionsBody"></tbody>
+      </table>
+      <div class="loading-state" id="tLoadingState">Loading...</div>
+      <div class="empty-state" id="tEmptyState" style="display:none;">No tuitions posted yet.</div>
+    </div>
+  </div>
+</div>
+
+<!-- Tuition Post/Edit Form -->
+<div class="form-overlay" id="tuitionFormOverlay">
+  <div class="form-modal">
+    <h2 id="tuitionFormTitle">Post New Tuition</h2>
+    <div class="sub">Fields marked with the gold label are internal-only and never shown to tutors.</div>
+    <div class="form-grid" id="tuitionFormGrid"></div>
+    <div class="form-err" id="tuitionFormErr"></div>
+    <div class="form-actions">
+      <button class="form-cancel" id="tuitionFormCancel" type="button">Cancel</button>
+      <button class="form-save" id="tuitionFormSave" type="button">Save Tuition</button>
+    </div>
+  </div>
+</div>
+
+<!-- Detail Drawer -->
+<div class="drawer-overlay" id="drawerOverlay">
+  <div class="drawer">
+    <div class="drawer-top">
+      <h2 id="drawerName">Applicant</h2>
+      <button class="drawer-close" id="drawerClose" aria-label="Close">&times;</button>
+    </div>
+    <div class="detail-grid" id="drawerGrid"></div>
+  </div>
+</div>
+
+<script>
+const SUPABASE_URL = "https://egsklbezrommbtyjyvak.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVnc2tsYmV6cm9tbWJ0eWp5dmFrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM1MzA1NDYsImV4cCI6MjA5OTEwNjU0Nn0.g2r1gWeBg4RXQTsikure9wQJTXC0aNUw2p2V99-cZl4";
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+const ADMIN_USER = "rayhan";
+const ADMIN_PASS = "milliondollar";
+
+const loginScreen = document.getElementById('loginScreen');
+const dashboard = document.getElementById('dashboard');
+let allRows = [];
+
+// session persists for the tab only
+document.getElementById('loginBtn').addEventListener('click', tryLogin);
+document.getElementById('adminPass').addEventListener('keydown', e => { if(e.key==='Enter') tryLogin(); });
+
+function tryLogin(){
+  const u = document.getElementById('adminUser').value.trim();
+  const p = document.getElementById('adminPass').value;
+  if(u === ADMIN_USER && p === ADMIN_PASS){
+    sessionStorage.setItem('tm_admin_ok','1');
+    showDashboard();
+  } else {
+    document.getElementById('loginErr').textContent = 'Incorrect username or password.';
+  }
+}
+
+document.getElementById('logoutBtn').addEventListener('click', () => {
+  sessionStorage.removeItem('tm_admin_ok');
+  dashboard.style.display = 'none';
+  loginScreen.style.display = 'flex';
+});
+
+if(sessionStorage.getItem('tm_admin_ok') === '1'){ showDashboard(); }
+
+function showDashboard(){
+  loginScreen.style.display = 'none';
+  dashboard.style.display = 'block';
+  loadData();
+}
+
+const SELECT_COLUMNS = `
+  name,whatsapp,university,year,zones,zones_sub,applied_tuition_code,created_at,
+  gender,department,current_location,teaching_mediums,current_tuition_count,religion,
+  is_chittagong_local,min_salary_expected,max_salary_expected,poor_student_min_charge,
+  poor_student_discount_tier,transportation_mode,ordered_food_delivery_4months,ssc_gpa,
+  self_studied_with_tutor_ssc_hsc,parents_phone,desired_monthly_earning,desired_tuition_count,
+  monthly_personal_expense,current_income_source,tuition_main_goal,family_supports_tuition,
+  survey_completed
+`.replace(/\s+/g,'');
+
+async function loadData(){
+  document.getElementById('loadingState').style.display = 'block';
+  document.getElementById('dataTable').hidden = true;
+  document.getElementById('emptyState').style.display = 'none';
+  try{
+    const { data, error } = await sb.from('tm_applicants')
+      .select(SELECT_COLUMNS)
+      .order('created_at', { ascending:false });
+    if(error) throw error;
+    allRows = data || [];
+    applyFilters();
+    document.getElementById('lastUpdated').textContent = 'Last updated: ' + new Date().toLocaleString('en-GB');
+  }catch(err){
+    document.getElementById('loadingState').textContent = 'Failed to load data.';
+    console.error(err);
+  }
+}
+
+/* ---------- label maps (English display labels for enum/coded values) ---------- */
+const LABELS = {
+  gender: { male:'Male', female:'Female' },
+  religion: { muslim:'Muslim', hindu:'Hindu', buddhist:'Buddhist', christian:'Christian', ethnic_religion:'Ethnic Religion' },
+  teaching_mediums: { bangla_medium:'Bangla Medium', national_curriculum:'National Curriculum', british_curriculum:'British Curriculum', arabic_subjects:'Arabic Subjects' },
+  transportation_mode: { uber_pathao:'Uber / Pathao', own_vehicle:'Own Bike/Car', rickshaw:'Rickshaw', cng:'CNG', local_bus:'Local Bus' },
+  current_income_source: { family_support:'From Family', tuition_income:'Tuition Income', side_business:'Side Business' },
+  tuition_main_goal: { personal_expense:'Personal Expenses', family_support:'Support Family', travel:'Travel', chill:'Leisure/Chill', dream_purchase:'Dream Purchase' },
+  poor_student_discount_tier: { discount_25:'25% Discount', discount_50:'50% Discount' }
+};
+function lbl(map, val){ return (LABELS[map] && LABELS[map][val]) || val || ''; }
+function lblList(map, arr){ return (Array.isArray(arr) ? arr : []).map(v => lbl(map, v)).join(', '); }
+function yn(v){ return v === true ? '<span class="pill yes">Yes</span>' : v === false ? '<span class="pill no">No</span>' : '—'; }
+function ynPlain(v){ return v === true ? 'Yes' : v === false ? 'No' : ''; }
+
+/* ---------- rating logic (points per survey answer, higher = better applicant) ---------- */
+function computeRating(r){
+  let score = 0;
+
+  // university
+  const uni = (r.university || '').trim().toUpperCase();
+  if(uni === 'CMC' || uni === 'CUET') score += 8;
+  else if(uni === 'CU') score += 5;
+  else if(uni === 'CVASU') score += 3;
+  else score += 2; // any other institute
+
+  // year
+  const y = r.year || '';
+  if(y === '১ম বর্ষ') score += 5;
+  else if(y === '৪র্থ বর্ষ') score += 3;
+  else if(y === '২য় বর্ষ' || y === '৩য় বর্ষ' || y === 'মাস্টার্স' || y === 'পিএইচডি') score += 2;
+
+  // gender
+  if(r.gender === 'male') score += 5;
+  else if(r.gender === 'female') score += 4;
+
+  // current tuitions
+  const ct = r.current_tuition_count;
+  if(ct === '0') score += 5;
+  else if(ct === '4' || ct === '5+') score += 4;
+  else if(ct === '1' || ct === '2' || ct === '3') score += 3;
+
+  // chittagong local
+  if(r.is_chittagong_local === true) score += 5;
+  else if(r.is_chittagong_local === false) score += 3;
+
+  // transportation
+  if(r.transportation_mode === 'own_vehicle') score += 5;
+  else if(r.transportation_mode === 'uber_pathao' || r.transportation_mode === 'cng') score += 4;
+  else if(r.transportation_mode === 'rickshaw') score += 3;
+  else if(r.transportation_mode === 'local_bus') score += 2;
+
+  // food delivery
+  if(r.ordered_food_delivery_4months === true) score += 5;
+  else if(r.ordered_food_delivery_4months === false) score += 3;
+
+  // ssc gpa
+  if(r.ssc_gpa !== null && r.ssc_gpa !== undefined && r.ssc_gpa !== ''){
+    const gpa = Number(r.ssc_gpa);
+    if(!isNaN(gpa)){
+      if(gpa >= 5) score += 5;
+      else if(gpa >= 4) score += 4;
+      else if(gpa >= 3) score += 3;
+      else score -= 5;
+    }
+  }
+
+  // self studied with home tutor (ssc/hsc)
+  if(r.self_studied_with_tutor_ssc_hsc === true) score += 5;
+  else if(r.self_studied_with_tutor_ssc_hsc === false) score += 3;
+
+  // monthly personal expense
+  if(r.monthly_personal_expense !== null && r.monthly_personal_expense !== undefined && r.monthly_personal_expense !== ''){
+    const exp = Number(r.monthly_personal_expense);
+    if(!isNaN(exp)){
+      if(exp >= 10000) score += 5;
+      else if(exp >= 7000) score += 4;
+      else if(exp >= 5000) score += 3;
+      else score += 2;
+    }
+  }
+
+  // personal earning goal (desired monthly earning)
+  if(r.desired_monthly_earning !== null && r.desired_monthly_earning !== undefined && r.desired_monthly_earning !== ''){
+    const goal = Number(r.desired_monthly_earning);
+    if(!isNaN(goal)){
+      if(goal >= 10000) score += 5;
+      else if(goal >= 7000) score += 4;
+      else if(goal >= 5000) score += 3;
+      else score += 2;
+    }
+  }
+
+  // income source
+  const src = Array.isArray(r.current_income_source) ? r.current_income_source : [];
+  if(src.includes('family_support')) score += 5;
+  else if(src.length) score += 3;
+
+  // core reason to earn money
+  if(r.tuition_main_goal === 'family_support') score += 0;
+  else if(r.tuition_main_goal) score += 5;
+
+  // family supportive for tuitions
+  if(r.family_supports_tuition === true) score += 5;
+  else if(r.family_supports_tuition === false) score += 3;
+
+  return score;
+}
+
+function render(rows){
+  const tbody = document.getElementById('tableBody');
+  document.getElementById('loadingState').style.display = 'none';
+  document.getElementById('statTotal').textContent = allRows.length;
+  const today = new Date().toDateString();
+  document.getElementById('statToday').textContent = allRows.filter(r => new Date(r.created_at).toDateString() === today).length;
+  document.getElementById('statUnis').textContent = new Set(allRows.map(r=>r.university)).size;
+  document.getElementById('statSurveyDone').textContent = allRows.filter(r=>r.survey_completed).length;
+
+  if(!rows.length){
+    document.getElementById('emptyState').style.display = 'block';
+    document.getElementById('dataTable').hidden = true;
+    return;
+  }
+  document.getElementById('dataTable').hidden = false;
+  tbody.innerHTML = rows.map((r,i) => `
+    <tr>
+      <td>${escapeHtml(r.name||'')}</td>
+      <td>${escapeHtml(r.whatsapp||'')}</td>
+      <td><b>${computeRating(r)}</b></td>
+      <td>${escapeHtml(r.university||'')}</td>
+      <td>${escapeHtml(r.year||'')}</td>
+      <td>${escapeHtml(formatZones(r.zones, r.zones_sub))}</td>
+      <td>${escapeHtml(lbl('gender', r.gender))}</td>
+      <td>${escapeHtml(lbl('religion', r.religion))}</td>
+      <td>${escapeHtml(r.current_tuition_count||'')}</td>
+      <td>${r.desired_monthly_earning ? '৳'+r.desired_monthly_earning : ''}</td>
+      <td>${r.applied_tuition_code ? `<span class="pill">${escapeHtml(r.applied_tuition_code)}</span>` : '—'}</td>
+      <td>${r.survey_completed ? '<span class="pill done">Done</span>' : '<span class="pill pending">Pending</span>'}</td>
+      <td>${r.created_at ? new Date(r.created_at).toLocaleString('en-GB') : ''}</td>
+      <td><button class="detail-btn" data-idx="${i}">View</button></td>
+    </tr>
+  `).join('');
+
+  tbody.querySelectorAll('.detail-btn').forEach(btn => {
+    btn.addEventListener('click', () => openDrawer(rows[Number(btn.dataset.idx)]));
+  });
+}
+
+function openDrawer(r){
+  document.getElementById('drawerName').textContent = r.name || 'Applicant';
+  const items = [
+    ['section','Rating'],
+    ['Applicant Rating', computeRating(r)],
+
+    ['section','Basic Info'],
+    ['WhatsApp', r.whatsapp],
+    ['University', r.university],
+    ['Year', r.year],
+    ['Department', r.department],
+    ['Current Location', r.current_location],
+    ['Zones', formatZones(r.zones, r.zones_sub)],
+    ['Parents Phone', r.parents_phone],
+    ['Applied Tuition Code', r.applied_tuition_code],
+    ['Applied At', r.created_at ? new Date(r.created_at).toLocaleString('en-GB') : ''],
+
+    ['section','Survey — Personal'],
+    ['Gender', lbl('gender', r.gender)],
+    ['Religion', lbl('religion', r.religion)],
+    ['Chittagong Local', ynPlain(r.is_chittagong_local)],
+    ['SSC GPA', r.ssc_gpa],
+    ['Self-studied w/ Home Tutor (SSC/HSC)', ynPlain(r.self_studied_with_tutor_ssc_hsc)],
+    ['Transportation Mode', lbl('transportation_mode', r.transportation_mode)],
+    ['Ordered Food Delivery (last 4 months)', ynPlain(r.ordered_food_delivery_4months)],
+
+    ['section','Survey — Teaching Preferences'],
+    ['Teaching Mediums', lblList('teaching_mediums', r.teaching_mediums)],
+    ['Current Tuition Count', r.current_tuition_count],
+    ['Desired Tuition Count', r.desired_tuition_count],
+    ['Min Salary Expected', r.min_salary_expected ? '৳'+r.min_salary_expected : ''],
+    ['Max Salary Expected', r.max_salary_expected ? '৳'+r.max_salary_expected : ''],
+    ['Poor Student — Min Charge', r.poor_student_min_charge ? '৳'+r.poor_student_min_charge : ''],
+    ['Poor Student — Discount Tier', lbl('poor_student_discount_tier', r.poor_student_discount_tier)],
+
+    ['section','Survey — Financial & Motivation'],
+    ['Desired Monthly Earning', r.desired_monthly_earning ? '৳'+r.desired_monthly_earning : ''],
+    ['Monthly Personal Expense', r.monthly_personal_expense ? '৳'+r.monthly_personal_expense : ''],
+    ['Current Income Source', lblList('current_income_source', r.current_income_source)],
+    ['Main Goal for Tuition', lbl('tuition_main_goal', r.tuition_main_goal)],
+    ['Family Supports Tuition', ynPlain(r.family_supports_tuition)],
+    ['Survey Completed', ynPlain(r.survey_completed)]
+  ];
+  const grid = document.getElementById('drawerGrid');
+  grid.innerHTML = items.map(([label,val]) => {
+    if(label === 'section') return `<div class="detail-section-title">${val}</div>`;
+    return `<div class="detail-item"><div class="dl">${escapeHtml(label)}</div><div class="dv">${escapeHtml(val || '—')}</div></div>`;
+  }).join('');
+  document.getElementById('drawerOverlay').classList.add('open');
+}
+document.getElementById('drawerClose').addEventListener('click', () => document.getElementById('drawerOverlay').classList.remove('open'));
+document.getElementById('drawerOverlay').addEventListener('click', e => {
+  if(e.target === document.getElementById('drawerOverlay')) document.getElementById('drawerOverlay').classList.remove('open');
+});
+
+function formatZones(zones, zonesSub){
+  const main = Array.isArray(zones) ? zones : [];
+  const sub = Array.isArray(zonesSub) ? zonesSub : [];
+  const parts = main.slice();
+  if(sub.length) parts.push(...sub);
+  return parts.join(', ');
+}
+
+function escapeHtml(s){
+  return String(s==null?'':s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+let ratingSortDir = null; // null = no sort, 'desc', 'asc'
+
+function applyFilters(){
+  const q = document.getElementById('searchBox').value.trim().toLowerCase();
+  const surveyVal = document.getElementById('surveyFilter').value;
+  let rows = allRows;
+  if(surveyVal === 'done') rows = rows.filter(r => r.survey_completed);
+  if(surveyVal === 'pending') rows = rows.filter(r => !r.survey_completed);
+  if(q){
+    rows = rows.filter(r =>
+      (r.name||'').toLowerCase().includes(q) ||
+      (r.whatsapp||'').toLowerCase().includes(q) ||
+      (r.parents_phone||'').toLowerCase().includes(q) ||
+      (r.department||'').toLowerCase().includes(q) ||
+      (r.current_location||'').toLowerCase().includes(q) ||
+      formatZones(r.zones, r.zones_sub).toLowerCase().includes(q) ||
+      (r.university||'').toLowerCase().includes(q)
+    );
+  }
+  if(ratingSortDir){
+    rows = rows.slice().sort((a,b) => ratingSortDir === 'desc'
+      ? computeRating(b) - computeRating(a)
+      : computeRating(a) - computeRating(b));
+  }
+  render(rows);
+}
+
+document.getElementById('searchBox').addEventListener('input', applyFilters);
+document.getElementById('surveyFilter').addEventListener('change', applyFilters);
+document.getElementById('refreshBtn').addEventListener('click', loadData);
+document.getElementById('ratingHeader').addEventListener('click', () => {
+  ratingSortDir = ratingSortDir === 'desc' ? 'asc' : 'desc';
+  document.getElementById('ratingHeader').textContent = ratingSortDir === 'desc' ? 'Rating ▼' : 'Rating ▲';
+  applyFilters();
+});
+
+document.getElementById('syncRatingBtn').addEventListener('click', async () => {
+  const btn = document.getElementById('syncRatingBtn');
+  btn.disabled = true;
+  const original = btn.textContent;
+  let done = 0;
+  try{
+    for(const r of allRows){
+      const rating = computeRating(r);
+      const { error } = await sb.from('tm_applicants').update({ rating }).eq('whatsapp', r.whatsapp);
+      if(error){ console.error('rating sync error for', r.whatsapp, error); continue; }
+      done++;
+      btn.textContent = `Saving... ${done}/${allRows.length}`;
+    }
+    btn.textContent = `Saved ${done}/${allRows.length}`;
+  }catch(err){
+    console.error(err);
+    btn.textContent = 'Failed — see console';
+  }finally{
+    setTimeout(() => { btn.textContent = original; btn.disabled = false; }, 2500);
+  }
+});
+
+document.getElementById('exportBtn').addEventListener('click', () => {
+  const header = [
+    'Name','WhatsApp','Rating','University','Year','Zones','Department','Current Location','Parents Phone',
+    'Gender','Religion','Chittagong Local','SSC GPA','Self-studied w/ Tutor','Transportation Mode',
+    'Ordered Food Delivery (4mo)','Teaching Mediums','Current Tuition Count','Desired Tuition Count',
+    'Min Salary Expected','Max Salary Expected','Poor Student Min Charge','Poor Student Discount Tier',
+    'Desired Monthly Earning','Monthly Personal Expense','Current Income Source','Main Goal',
+    'Family Supports Tuition','Survey Completed','Applied Tuition Code','Date'
+  ];
+  const rows = allRows.map(r => [
+    r.name, r.whatsapp, computeRating(r), r.university, r.year, formatZones(r.zones,r.zones_sub), r.department, r.current_location, r.parents_phone,
+    lbl('gender', r.gender), lbl('religion', r.religion), ynPlain(r.is_chittagong_local), r.ssc_gpa, ynPlain(r.self_studied_with_tutor_ssc_hsc),
+    lbl('transportation_mode', r.transportation_mode), ynPlain(r.ordered_food_delivery_4months), lblList('teaching_mediums', r.teaching_mediums),
+    r.current_tuition_count, r.desired_tuition_count, r.min_salary_expected, r.max_salary_expected, r.poor_student_min_charge,
+    lbl('poor_student_discount_tier', r.poor_student_discount_tier), r.desired_monthly_earning, r.monthly_personal_expense,
+    lblList('current_income_source', r.current_income_source), lbl('tuition_main_goal', r.tuition_main_goal),
+    ynPlain(r.family_supports_tuition), ynPlain(r.survey_completed), r.applied_tuition_code||'', r.created_at
+  ]);
+  const csv = [header, ...rows].map(row => row.map(v => `"${String(v==null?'':v).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const blob = new Blob(["\uFEFF"+csv], {type:'text/csv;charset=utf-8;'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'tuition-media-applicants.csv';
+  a.click();
+  URL.revokeObjectURL(url);
+});
+
+/* ===================================================================== */
+/* ============================ TAB SWITCHING =========================== */
+/* ===================================================================== */
+const tabApplicants = document.getElementById('tabApplicants');
+const tabTuitions = document.getElementById('tabTuitions');
+const applicantsPanel = document.getElementById('applicantsPanel');
+const tuitionsPanel = document.getElementById('tuitionsPanel');
+const dashTitle = document.getElementById('dashTitle');
+let tuitionsLoadedOnce = false;
+
+tabApplicants.addEventListener('click', () => {
+  tabApplicants.classList.add('active'); tabTuitions.classList.remove('active');
+  applicantsPanel.style.display = 'block'; tuitionsPanel.style.display = 'none';
+  dashTitle.textContent = 'Applicants';
+});
+tabTuitions.addEventListener('click', () => {
+  tabTuitions.classList.add('active'); tabApplicants.classList.remove('active');
+  tuitionsPanel.style.display = 'block'; applicantsPanel.style.display = 'none';
+  dashTitle.textContent = 'Tuitions';
+  if(!tuitionsLoadedOnce){ tuitionsLoadedOnce = true; loadTuitions(); }
+});
+
+/* ===================================================================== */
+/* ============================== TUITIONS =============================== */
+/* ===================================================================== */
+
+// The 33 named zones (internal use only, never shown to tutors)
+const TUITION_ZONES = [
+  "01 - Chakbazar","02 - Jamalkhan","03 - Bohoddarhat","04 - Chandgaon","05 - Andorkillah",
+  "06 - Terrybazar","07 - Dewanbazar","08 - Kotowali","09 - Firingibazar","10 - Sadarghat",
+  "11 - Nalapara","12 - Bakolia","13 - Hathazari","14 - Baluchara","15 - Aman Bazar",
+  "16 - Agrabad","17 - Dewanhat","18 - Barek Building","19 - Oxygen","20 - Bayezid",
+  "21 - Muradpur","22 - Sholoshohor","23 - Khulshi","24 - Panchlaish","25 - Lalkhan Bazar",
+  "26 - AK Khan","27 - Alonkar","28 - Tigerpass","29 - Halishahar Block","30 - Munshipara",
+  "31 - Custom House","32 - Bepza","33 - Patenga"
+];
+
+const TUITION_GENDER_OPTS   = [['any','Any'],['male','Male'],['female','Female']];
+const TUITION_RELIGION_OPTS = [['any','Any'],['muslim','Muslim'],['hindu','Hindu'],['buddhist','Buddhist'],['christian','Christian']];
+const TUITION_UNI_OPTS      = [['any','Any'],['cuet','CUET'],['cu','CU'],['cmc','CMC'],['cvasu','CVASU']];
+const TUITION_YEAR_OPTS     = [['','—'],['1st','1st Year'],['2nd','2nd Year'],['3rd','3rd Year'],['4th','4th Year'],['masters','Masters']];
+const TUITION_LOCAL_OPTS    = [['','—'],['yes','Yes'],['no','No']];
+const TUITION_STATUS_OPTS   = [['open','Open'],['filled','Filled'],['cancelled','Cancelled']];
+const TUITION_MEDIUM_OPTS   = [['','—'],['bangla_medium','Bangla Medium'],['national_curriculum','National Curriculum'],['british_curriculum','British Curriculum'],['arabic_subjects','Arabic Subjects']];
+
+const TUITION_LABELS = {
+  gender: Object.fromEntries(TUITION_GENDER_OPTS),
+  religion: Object.fromEntries(TUITION_RELIGION_OPTS),
+  university: Object.fromEntries(TUITION_UNI_OPTS),
+  year: Object.fromEntries(TUITION_YEAR_OPTS),
+  status: Object.fromEntries(TUITION_STATUS_OPTS),
+  medium: Object.fromEntries(TUITION_MEDIUM_OPTS)
+};
+
+let allTuitions = [];
+let editingTuitionId = null;
+
+const TUITION_SELECT_COLUMNS = "id,code,location,zone,gender,religion,university,year,is_local,salary,subjects,guardian_number,days,time_slot,medium,status,created_at";
+
+async function loadTuitions(){
+  document.getElementById('tLoadingState').style.display = 'block';
+  document.getElementById('tLoadingState').textContent = 'Loading...';
+  document.getElementById('tuitionsTable').hidden = true;
+  document.getElementById('tEmptyState').style.display = 'none';
+  try{
+    const { data, error } = await sb.from('tm_tuitions')
+      .select(TUITION_SELECT_COLUMNS)
+      .order('created_at', { ascending:false });
+    if(error) throw error;
+    allTuitions = data || [];
+    applyTuitionFilters();
+  }catch(err){
+    document.getElementById('tLoadingState').textContent = 'Failed to load tuitions.';
+    console.error(err);
+  }
+}
+
+function renderTuitions(rows){
+  const tbody = document.getElementById('tuitionsBody');
+  document.getElementById('tLoadingState').style.display = 'none';
+  document.getElementById('tStatTotal').textContent = allTuitions.length;
+  document.getElementById('tStatOpen').textContent = allTuitions.filter(t=>t.status==='open').length;
+  document.getElementById('tStatFilled').textContent = allTuitions.filter(t=>t.status==='filled').length;
+
+  if(!rows.length){
+    document.getElementById('tEmptyState').style.display = 'block';
+    document.getElementById('tuitionsTable').hidden = true;
+    return;
+  }
+  document.getElementById('tuitionsTable').hidden = false;
+  tbody.innerHTML = rows.map(t => tuitionRowHTML(t)).join('');
+
+  tbody.querySelectorAll('[data-edit]').forEach(btn => {
+    btn.addEventListener('click', () => openTuitionForm(Number(btn.dataset.edit)));
+  });
+  tbody.querySelectorAll('[data-delete]').forEach(btn => {
+    btn.addEventListener('click', () => deleteTuition(Number(btn.dataset.delete)));
+  });
+}
+
+function tuitionRowHTML(t){
+  const localTxt = t.is_local===true?'Yes':t.is_local===false?'No':'—';
+  return '<tr>'
+    + '<td><span class="pill">' + escapeHtml(t.code||'') + '</span></td>'
+    + '<td>' + escapeHtml(t.location||'') + '</td>'
+    + '<td>' + escapeHtml(t.zone||'') + '</td>'
+    + '<td>' + escapeHtml(TUITION_LABELS.gender[t.gender]||t.gender||'') + '</td>'
+    + '<td>' + escapeHtml(TUITION_LABELS.religion[t.religion]||t.religion||'') + '</td>'
+    + '<td>' + escapeHtml(TUITION_LABELS.university[t.university]||t.university||'') + '</td>'
+    + '<td>' + escapeHtml(TUITION_LABELS.year[t.year]||'') + '</td>'
+    + '<td>' + localTxt + '</td>'
+    + '<td>' + (t.salary!=null?'৳'+t.salary:'') + '</td>'
+    + '<td>' + escapeHtml(t.subjects||'') + '</td>'
+    + '<td>' + escapeHtml(t.guardian_number||'') + '</td>'
+    + '<td>' + escapeHtml(t.days||'') + '</td>'
+    + '<td>' + escapeHtml(t.time_slot||'') + '</td>'
+    + '<td>' + escapeHtml(TUITION_LABELS.medium[t.medium]||t.medium||'') + '</td>'
+    + '<td><span class="pill ' + t.status + '">' + escapeHtml(TUITION_LABELS.status[t.status]||t.status) + '</span></td>'
+    + '<td><div class="row-actions">'
+    +   '<button class="icon-btn" data-edit="' + t.id + '">Edit</button>'
+    +   '<button class="icon-btn danger" data-delete="' + t.id + '">Delete</button>'
+    + '</div></td>'
+    + '</tr>';
+}
+
+function applyTuitionFilters(){
+  const q = document.getElementById('tSearchBox').value.trim().toLowerCase();
+  const statusVal = document.getElementById('tStatusFilter').value;
+  let rows = allTuitions;
+  if(statusVal) rows = rows.filter(t => t.status === statusVal);
+  if(q){
+    rows = rows.filter(t =>
+      (t.code||'').toLowerCase().includes(q) ||
+      (t.location||'').toLowerCase().includes(q) ||
+      (t.zone||'').toLowerCase().includes(q) ||
+      (t.subjects||'').toLowerCase().includes(q)
+    );
+  }
+  renderTuitions(rows);
+}
+document.getElementById('tSearchBox').addEventListener('input', applyTuitionFilters);
+document.getElementById('tStatusFilter').addEventListener('change', applyTuitionFilters);
+document.getElementById('tRefreshBtn').addEventListener('click', loadTuitions);
+
+async function deleteTuition(id){
+  if(!confirm('Delete this tuition permanently?')) return;
+  try{
+    const { error } = await sb.from('tm_tuitions').delete().eq('id', id);
+    if(error) throw error;
+    await loadTuitions();
+  }catch(err){
+    alert('Failed to delete tuition.');
+    console.error(err);
+  }
+}
+
+/* ---------- Tuition post/edit form ---------- */
+const tuitionFormOverlay = document.getElementById('tuitionFormOverlay');
+const tuitionFormGrid = document.getElementById('tuitionFormGrid');
+const tuitionFormErr = document.getElementById('tuitionFormErr');
+const tuitionFormTitle = document.getElementById('tuitionFormTitle');
+
+function selectHTML(id, label, opts, current, internal){
+  const optsHtml = opts.map(function(pair){
+    const val = pair[0], lbl = pair[1];
+    return '<option value="' + val + '" ' + (val===current?'selected':'') + '>' + lbl + '</option>';
+  }).join('');
+  return '<div class="form-field"><label>' + (internal?'\uD83D\uDD12 ':'') + label + '</label><select id="' + id + '">' + optsHtml + '</select></div>';
+}
+function inputHTML(id, label, type, current, placeholder, internal){
+  const val = current==null ? '' : escapeHtml(String(current));
+  return '<div class="form-field"><label>' + (internal?'\uD83D\uDD12 ':'') + label + '</label><input type="' + type + '" id="' + id + '" value="' + val + '" placeholder="' + (placeholder||'') + '"></div>';
+}
+function textareaHTML(id, label, current, placeholder, internal){
+  const val = current==null ? '' : escapeHtml(String(current));
+  return '<div class="form-field full"><label>' + (internal?'\uD83D\uDD12 ':'') + label + '</label><textarea id="' + id + '" placeholder="' + (placeholder||'') + '">' + val + '</textarea></div>';
+}
+
+function openTuitionForm(id){
+  editingTuitionId = id || null;
+  const t = id ? allTuitions.find(function(x){ return x.id === id; }) : null;
+  tuitionFormTitle.textContent = t ? ('Edit Tuition — ' + t.code) : 'Post New Tuition';
+  tuitionFormErr.textContent = '';
+
+  const zoneOpts = TUITION_ZONES.map(function(z){ return [z,z]; });
+
+  tuitionFormGrid.innerHTML = [
+    '<div class="section-note">Shown to tutors</div>',
+    inputHTML('f_location','Location (general area shown to tutors)','text', t?t.location:null, 'e.g. Agrabad, near Chittagong College'),
+    inputHTML('f_salary','Salary (\u09F3 / month)','number', t?t.salary:null, 'e.g. 6000'),
+    selectHTML('f_gender','Gender', TUITION_GENDER_OPTS, t?t.gender:'any'),
+    selectHTML('f_religion','Religion', TUITION_RELIGION_OPTS, t?t.religion:'any'),
+    selectHTML('f_university','University', TUITION_UNI_OPTS, t?t.university:'any'),
+    inputHTML('f_days','Days','text', t?t.days:null, 'e.g. 5 days/week'),
+    inputHTML('f_time','Time','text', t?t.time_slot:null, 'e.g. Evening (7-9 PM)'),
+    selectHTML('f_medium','Medium', TUITION_MEDIUM_OPTS, t?(t.medium||''):''),
+    textareaHTML('f_subjects','Subjects', t?t.subjects:null, 'e.g. Physics, Chemistry (Class 9-10)'),
+
+    '<div class="section-note">Internal only \u2014 never shown to tutors</div>',
+    selectHTML('f_zone','Zone (precise, internal)', zoneOpts, t?t.zone:null, true),
+    selectHTML('f_year','Year', TUITION_YEAR_OPTS, t?(t.year||''):'', true),
+    selectHTML('f_local','Chittagong Local Required', TUITION_LOCAL_OPTS, t?(t.is_local===true?'yes':t.is_local===false?'no':''):'', true),
+    inputHTML('f_guardian','Guardian Phone Number','tel', t?t.guardian_number:null, '01XXXXXXXXX', true),
+    selectHTML('f_status','Status', TUITION_STATUS_OPTS, t?t.status:'open', true)
+  ].join('');
+
+  tuitionFormOverlay.classList.add('open');
+}
+
+document.getElementById('tPostBtn').addEventListener('click', function(){ openTuitionForm(null); });
+document.getElementById('tuitionFormCancel').addEventListener('click', function(){ tuitionFormOverlay.classList.remove('open'); });
+tuitionFormOverlay.addEventListener('click', function(e){ if(e.target === tuitionFormOverlay) tuitionFormOverlay.classList.remove('open'); });
+
+document.getElementById('tuitionFormSave').addEventListener('click', async function(){
+  tuitionFormErr.textContent = '';
+  const location = document.getElementById('f_location').value.trim();
+  const salaryRaw = document.getElementById('f_salary').value;
+  const subjects = document.getElementById('f_subjects').value.trim();
+  const zone = document.getElementById('f_zone').value;
+
+  if(!location){ tuitionFormErr.textContent = 'Location is required.'; return; }
+  if(!salaryRaw || isNaN(Number(salaryRaw)) || Number(salaryRaw) < 0){ tuitionFormErr.textContent = 'Enter a valid salary.'; return; }
+  if(!subjects){ tuitionFormErr.textContent = 'Subjects is required.'; return; }
+  if(!zone){ tuitionFormErr.textContent = 'Zone is required.'; return; }
+
+  const localVal = document.getElementById('f_local').value;
+  const payload = {
+    location: location,
+    salary: Number(salaryRaw),
+    subjects: subjects,
+    zone: zone,
+    gender: document.getElementById('f_gender').value,
+    religion: document.getElementById('f_religion').value,
+    university: document.getElementById('f_university').value,
+    year: document.getElementById('f_year').value || null,
+    is_local: localVal === '' ? null : (localVal === 'yes'),
+    days: document.getElementById('f_days').value.trim() || null,
+    time_slot: document.getElementById('f_time').value.trim() || null,
+    medium: document.getElementById('f_medium').value || null,
+    guardian_number: document.getElementById('f_guardian').value.trim() || null,
+    status: document.getElementById('f_status').value
+  };
+
+  const saveBtn = document.getElementById('tuitionFormSave');
+  saveBtn.disabled = true; saveBtn.textContent = 'Saving...';
+  try{
+    let error;
+    if(editingTuitionId){
+      ({ error } = await sb.from('tm_tuitions').update(payload).eq('id', editingTuitionId));
+    } else {
+      ({ error } = await sb.from('tm_tuitions').insert(payload));
+    }
+    if(error) throw error;
+    tuitionFormOverlay.classList.remove('open');
+    await loadTuitions();
+  }catch(err){
+    tuitionFormErr.textContent = 'Failed to save tuition. ' + (err.message||'');
+    console.error(err);
+  }finally{
+    saveBtn.disabled = false; saveBtn.textContent = 'Save Tuition';
+  }
+});
+</script>
+</body>
+</html>
